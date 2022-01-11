@@ -33,13 +33,13 @@ Possible arguments for the setup are:
 #include "pico/stdlib.h"
 #include "LCD4Pico/LCD4Pico.hpp"
 
-#define BIT_MODE 8
+#define BIT_MODE 4
 
 int main()
 {
     stdio_init_all();
 
-    const uint8_t dpins[BIT_MODE] = {7, 6, 5, 4,}; //3, 2, 1, 0};
+    const uint8_t dpins[BIT_MODE] = {7, 6, 5, 4}; // 3, 2, 1, 0};
     const uint8_t enable_pin = 16;
     const uint8_t rs_pin = 18;
     const uint8_t rw_pin = 17;
