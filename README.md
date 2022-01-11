@@ -16,7 +16,7 @@ LCD4PicoBase is the base class for LCD4Pico and contains the "low level" methods
 
 ### Example 
 First of all you need to declare the pins.
-Declare the data pins in the order from 7 to 0.
+Declare the data pins in the order from D7 to D0.
 
 Pass all the pins to the constructor.
 Call then the ```setup()``` function.
