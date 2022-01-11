@@ -1,33 +1,33 @@
 #pragma once
 #include "pico/stdlib.h"
-#include <vector>
 #include <string>
 #include "LCD4PicoBase.hpp"
 
 namespace lcd4pico
 {
-    class LCD4Pico : private LCD4PicoBase
+    template <uint8_t data_length>
+    class LCD4Pico : private LCD4PicoBase<data_length>
     {
     public:
-        using LCD4PicoBase::LCD4PicoBase;
-        using LCD4PicoBase::setup;
+        using LCD4PicoBase<data_length>::LCD4PicoBase;
+        using LCD4PicoBase<data_length>::setup;
 
         void clearDisplay()
         {
-            writeMode();
-            gpio_put(RSPIN, 0);
+            this->writeMode();
+            gpio_put(this->RSPIN, 0);
 
-            writeData(0b1);
+            this->writeData(0x1);
 
             sleep_ms(2);
         }
 
         void returnHome()
         {
-            writeMode();
-            gpio_put(RSPIN, 0);
+            this->writeMode();
+            gpio_put(this->RSPIN, 0);
 
-            writeData(0b10);
+            this->writeData(0x2);
 
             sleep_ms(2);
         }
@@ -35,50 +35,50 @@ namespace lcd4pico
         // shifts the display "left" or "right"
         void shiftDisplay(std::string direction)
         {
-            writeMode();
-            gpio_put(RSPIN, 0);
+            this->writeMode();
+            gpio_put(this->RSPIN, 0);
 
             if (direction != "left" && direction != "right")
                 return;
-            shiftDisplayOrCursor(direction, true);
+            this->shiftDisplayOrCursor(direction, true);
         }
         // moves the cursor "left" or "right"
         void moveCursor(std::string direction)
         {
-            writeMode();
-            gpio_put(RSPIN, 0);
+            this->writeMode();
+            gpio_put(this->RSPIN, 0);
 
             if (direction != "left" && direction != "right")
                 return;
-            shiftDisplayOrCursor(direction, false);
+            this->shiftDisplayOrCursor(direction, false);
         }
 
         // moves the cursor to the head of the first line
         void toFirstLine()
         {
-            setDDRAM(0);
+            this->setDDRAM(0);
         }
         // moves the cursor to the head of the second line
         void toSecondLine()
         {
-            setDDRAM(0x40);
+            this->setDDRAM(0x40);
         }
 
         void write(std::string str)
         {
-            writeMode();
-            gpio_put(RSPIN, 1);
+            this->writeMode();
+            gpio_put(this->RSPIN, 1);
 
             for (auto s : str)
             {
-                writeData(s);
+                this->writeData(s);
             }
         }
 
         void writeLines(std::string firstLine, std::string secondLine)
         {
-            writeMode();
-            gpio_put(RSPIN, 1);
+            this->writeMode();
+            gpio_put(this->RSPIN, 1);
 
             write(firstLine);
             toSecondLine();

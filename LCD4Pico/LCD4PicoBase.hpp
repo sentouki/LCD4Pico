@@ -1,32 +1,35 @@
 #pragma once
 #include "pico/stdlib.h"
-#include <vector>
 #include <string>
 #include <bitset>
-#include <algorithm>
-
-#define DATABITSIZE 8
 
 namespace lcd4pico
 {
+    template <uint8_t data_length>
     class LCD4PicoBase
     {
     public:
         const uint8_t ENABLEPIN;
         const uint8_t RSPIN;
         const uint8_t RWPIN;
-        const uint8_t (&DATAPINS)[8];
+        const uint8_t (&DATAPINS)[data_length];
         bool isFunctionSet = false;
 
+        // data pins order: D7,D6,D5,D4 (,D3,D2,D1,D0)
         LCD4PicoBase(uint8_t Enable_Pin,
                      uint8_t RS_Pin,
                      uint8_t RW_Pin,
-                     const uint8_t (&Data_Pins)[8]) : ENABLEPIN(Enable_Pin),
-                                                      RSPIN(RS_Pin),
-                                                      RWPIN(RW_Pin),
-                                                      DATAPINS(Data_Pins) {}
+                     const uint8_t (&Data_Pins)[data_length]) :
+
+                                                                ENABLEPIN(Enable_Pin),
+                                                                RSPIN(RS_Pin),
+                                                                RWPIN(RW_Pin),
+                                                                DATAPINS(Data_Pins)
+        {
+        }
 
         void setup(uint8_t displayLines = 2,
+                   bool largeFont = false,
                    bool blinkingCursor = true,
                    bool cursorOn = true,
                    bool displayOn = true,
@@ -41,7 +44,7 @@ namespace lcd4pico
             gpio_set_dir(RWPIN, GPIO_OUT);
             gpio_put(ENABLEPIN, 0);
             gpio_put(RSPIN, 0);
-            setFunctionMode(displayLines);
+            setFunctionMode(displayLines, largeFont);
             displayControl(blinkingCursor, cursorOn, displayOn);
             setEntryMode(accompanyDisplayShift, incrementCursor);
         }
@@ -61,23 +64,30 @@ namespace lcd4pico
             writeData(data);
         }
 
-        void setFunctionMode(uint8_t numDisplayLines = 2)
+        void setFunctionMode(uint8_t numDisplayLines = 2, bool largeFont = false)
         {
             if (isFunctionSet)
                 return;
-            isFunctionSet = true;
 
             writeMode();
             gpio_put(RSPIN, 0);
 
+            uint8_t data = 0b100000;
+            if (data_length == 8)
+                data |= 0b10000;
+            else
+                writeData(data); // set operation mode to 4bit
+
+            isFunctionSet = true;
             if (numDisplayLines == 2)
             {
-                writeData(0b00110000 | 0b00001000);
+                data |= 0b1000;
             }
-            else
+            if (largeFont && numDisplayLines == 1)
             {
-                writeData(0b00110000 | 0b00000100);
+                data |= 0b100;
             }
+            writeData(data);
         }
 
         void setEntryMode(bool accompanyDisplayShift, bool incrementCursor)
@@ -114,7 +124,6 @@ namespace lcd4pico
         std::string intToBinString(uint8_t value)
         {
             std::string binary = std::bitset<8>(value).to_string();
-            std::reverse(binary.begin(), binary.end());
             return binary;
         }
 
@@ -123,7 +132,7 @@ namespace lcd4pico
             writeMode();
             gpio_put(RSPIN, 0);
 
-            writeData(0b01000000 | addr);
+            writeData(0b1000000 | addr);
         }
 
         void setDDRAM(uint8_t addr)
@@ -137,11 +146,19 @@ namespace lcd4pico
         void writeData(uint8_t data)
         {
             auto binData = intToBinString(data);
-            for (uint8_t pin = 0; pin < DATABITSIZE; pin++)
+            for (uint8_t pin = 0; pin < data_length; pin++)
             {
                 gpio_put(DATAPINS[pin], binData[pin] - '0');
             }
             clockEnable();
+            if (data_length != 8 && isFunctionSet)
+            {
+                for (uint8_t pin = 0, i = data_length; pin < data_length; pin++, i++)
+                {
+                    gpio_put(DATAPINS[pin], binData[i] - '0');
+                }
+                clockEnable();
+            }
         }
 
         void readMode()

@@ -16,34 +16,48 @@ LCD4PicoBase is the base class for LCD4Pico and contains the "low level" methods
 
 ### Example 
 First of all you need to declare the pins.
-Declare the data pins in the order from 0 to 7.
+Declare the data pins in the order from 7 to 0.
 
-```
+Pass all the pins to the constructor.
+Call then the ```setup()``` function.
+Possible arguments for the setup are:
+ - displayLines : 1/2,
+ - largeFont : true/false,
+ - blinkingCursor : true/false, 
+ - cursorOn : true/false, 
+ - displayOn : true/false, 
+ - accompanyDisplayShift : true/false, 
+ - incrementCursor : true/false
+
+```c++
 #include "pico/stdlib.h"
 #include "LCD4Pico/LCD4Pico.hpp"
+
+#define BIT_MODE 8
 
 int main()
 {
     stdio_init_all();
 
-    const uint8_t dpins[8] = {0, 1, 2, 3, 4, 5, 6, 7};
+    const uint8_t dpins[BIT_MODE] = {7, 6, 5, 4,}; //3, 2, 1, 0};
     const uint8_t enable_pin = 16;
     const uint8_t rs_pin = 18;
     const uint8_t rw_pin = 17;
 
-    lcd4pico::LCD4Pico lcd(enable_pin, rs_pin, rw_pin, dpins);
+    lcd4pico::LCD4Pico<BIT_MODE> lcd(enable_pin, rs_pin, rw_pin, dpins);
 
     lcd.setup();
 
     lcd.write("Hello,");
     lcd.toSecondLine();
     lcd.write("World!");
-    
+
     sleep_ms(1000);
 
-    for (uint i = 0; i < 150; i++) {
+    for (uint i = 0; i < 100; i++)
+    {
         lcd.shiftDisplay("right");
-        sleep_ms(100);
+        sleep_ms(120);
     }
 
     sleep_ms(3000);
@@ -55,19 +69,8 @@ int main()
 }
 ```
 
-Pass all the pins to the constructor.
-Call then the ```setup()``` function.
-Possible arguments for the setup are:
- - displayLines : 1/2, 
- - blinkingCursor : true/false, 
- - cursorOn : true/false, 
- - displayOn : true/false, 
- - accompanyDisplayShift : true/false, 
- - incrementCursor : true/false
-
  ### Features in the future
 
- - 4bit mode
  - predefined custom characters
  - possibility to define own custom characters
  - animations
