@@ -18,9 +18,9 @@ LCD4PicoBase is the base class for LCD4Pico and contains the "low level" methods
 First of all you need to declare the pins.
 Declare the data pins in the order from D7 to D0.
 
-LCD4Pico works in 4bit mode as well, in 4bit only you only need to set the pins D7 to D4.
+LCD4Pico works in 4bit mode as well,  in 4bit mode you only need to set the pins D7 to D4.
 
-If you want to use the LCD in write-only mode (without the RW pin), 
+If you want to use the LCD in write-only mode (without the RW pin),  
 call the overloaded ctor without the ```rw_pin``` arg or set ```rw_pin``` to ``` WRITE_ONLY```.
 
 Pass all the pins to the constructor.
