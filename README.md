@@ -14,14 +14,19 @@ The LCD4Pico class contains the "high level" methods for writing text to the LCD
 LCD4PicoBase is the base class for LCD4Pico and contains the "low level" methods like for writing raw bits, switching between read and write mode and setting the enable pin.
 
 
-### Example 
+### Example
 First of all you need to declare the pins.
 Declare the data pins in the order from D7 to D0.
+
+LCD4Pico works in 4bit mode as well, in 4bit only you only need to set the pins D7 to D4.
+
+If you want to use the LCD in write-only mode (without the RW pin), 
+call the overloaded ctor without the ```rw_pin``` arg or set ```rw_pin``` to ``` WRITE_ONLY```.
 
 Pass all the pins to the constructor.
 Call then the ```setup()``` function.
 Possible arguments for the setup are:
- - displayLines : 1/2,
+ - numOfdisplayLines : 1/2,
  - largeFont : true/false,
  - blinkingCursor : true/false, 
  - cursorOn : true/false, 
@@ -45,6 +50,7 @@ int main()
     const uint8_t rw_pin = 17;
 
     lcd4pico::LCD4Pico<BIT_MODE> lcd(enable_pin, rs_pin, rw_pin, dpins);
+    // lcd4pico::LCD4Pico<BIT_MODE> lcd(enable_pin, rs_pin, dpins);  for write-only mode
 
     lcd.setup();
 

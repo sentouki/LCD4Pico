@@ -3,17 +3,46 @@
 #include <string>
 #include <bitset>
 
+#define WRITE_ONLY UINT8_MAX
+
+#define FUNCTION_SET 0b100000
+#define DL_8BIT 0b10000
+#define TWO_DISPLAY_LINES 0b1000
+#define FONT_5x10DOTS 0b100
+
+#define DISPLAY_SHIFT 0b11000
+#define RIGHT_SHIFT 0b10100
+#define LEFT_SHIFT 0b10000
+
+#define ENTRY_MODE_SET 0b100
+#define ACCOMPANY_DISPLAY_SHIFT 0b1
+#define INCREMENT_CURSOR 0b10
+
+#define DISPLAY_CONTROL 0b1000
+#define BLINKING_CURSOR 0b1
+#define CURSOR_ON 0b10
+#define DISPLAY_ON 0b100
+
+#define SET_CGRAM 0b1000000
+#define SET_DDRAM 0b10000000
+
+#define BUSY_FLAG 0b10000000
+
 namespace lcd4pico
 {
     template <uint8_t data_length>
     class LCD4PicoBase
     {
+    protected:
+        bool isFunctionSet = false;
+        bool isInWriteMode = false;
+        bool writeOnlyMode = true;
+        bool firstInstruction = true; // flag indicating whether the instruction currently being executed is the first instruction; important for 4bit mode
     public:
         const uint8_t ENABLEPIN;
         const uint8_t RSPIN;
         const uint8_t RWPIN;
         const uint8_t (&DATAPINS)[data_length];
-        bool isFunctionSet = false;
 
         // data pins order: D7,D6,D5,D4 (,D3,D2,D1,D0)
         LCD4PicoBase(uint8_t Enable_Pin,
@@ -28,9 +57,22 @@ namespace lcd4pico
         {
         }
 
-        void setup(uint8_t displayLines = 2,
+        // ctor with the RW pin deactivated
+        // data pins order: D7,D6,D5,D4 (,D3,D2,D1,D0)
+        LCD4PicoBase(uint8_t Enable_Pin,
+                     uint8_t RS_Pin,
+                     const uint8_t (&Data_Pins)[data_length]) :
+
+                                                                ENABLEPIN(Enable_Pin),
+                                                                RSPIN(RS_Pin),
+                                                                RWPIN(WRITE_ONLY),
+                                                                DATAPINS(Data_Pins)
+        {
+        }
+
+        void setup(uint8_t numOfdisplayLines = 2,
                    bool largeFont = false,
-                   bool blinkingCursor = true,
+                   bool blinkingCursor = false,
                    bool cursorOn = true,
                    bool displayOn = true,
                    bool accompanyDisplayShift = false,
@@ -38,30 +80,19 @@ namespace lcd4pico
         {
             gpio_init(ENABLEPIN);
             gpio_init(RSPIN);
-            gpio_init(RWPIN);
+            if (RWPIN != WRITE_ONLY)
+            {
+                gpio_init(RWPIN);
+                gpio_set_dir(RWPIN, GPIO_OUT);
+                writeOnlyMode = false;
+            }
             gpio_set_dir(ENABLEPIN, GPIO_OUT);
             gpio_set_dir(RSPIN, GPIO_OUT);
-            gpio_set_dir(RWPIN, GPIO_OUT);
             gpio_put(ENABLEPIN, 0);
             gpio_put(RSPIN, 0);
-            setFunctionMode(displayLines, largeFont);
+            setFunctionMode(numOfdisplayLines, largeFont);
             displayControl(blinkingCursor, cursorOn, displayOn);
             setEntryMode(accompanyDisplayShift, incrementCursor);
-        }
-
-        void shiftDisplayOrCursor(std::string direction, bool display)
-        {
-            if (direction != "left" && direction != "right")
-                return;
-
-            writeMode();
-            gpio_put(RSPIN, 0);
-
-            uint8_t data = direction == "right" ? 0b10100 : 0b10000;
-            if (display)
-                data |= 0b11000;
-
-            writeData(data);
         }
 
         void setFunctionMode(uint8_t numDisplayLines = 2, bool largeFont = false)
@@ -72,21 +103,39 @@ namespace lcd4pico
             writeMode();
             gpio_put(RSPIN, 0);
 
-            uint8_t data = 0b100000;
+            uint8_t data = FUNCTION_SET;
             if (data_length == 8)
-                data |= 0b10000;
+                data |= DL_8BIT;
             else
+            {
                 writeData(data); // set operation mode to 4bit
+            }
+            firstInstruction = false;
 
-            isFunctionSet = true;
             if (numDisplayLines == 2)
             {
-                data |= 0b1000;
+                data |= TWO_DISPLAY_LINES;
             }
             if (largeFont && numDisplayLines == 1)
             {
-                data |= 0b100;
+                data |= FONT_5x10DOTS;
             }
+            writeData(data);
+            isFunctionSet = true;
+        }
+
+        void shiftDisplayOrCursor(std::string direction, bool display)
+        {
+            if (direction != "left" && direction != "right")
+                return;
+
+            writeMode();
+            gpio_put(RSPIN, 0);
+
+            uint8_t data = direction == "right" ? RIGHT_SHIFT : LEFT_SHIFT;
+            if (display)
+                data |= DISPLAY_SHIFT;
+
             writeData(data);
         }
 
@@ -95,11 +144,11 @@ namespace lcd4pico
             writeMode();
             gpio_put(RSPIN, 0);
 
-            uint8_t data = 0b100;
+            uint8_t data = ENTRY_MODE_SET;
             if (accompanyDisplayShift)
-                data |= 0b1;
+                data |= ACCOMPANY_DISPLAY_SHIFT;
             if (incrementCursor)
-                data |= 0b10;
+                data |= INCREMENT_CURSOR;
 
             writeData(data);
         }
@@ -109,13 +158,13 @@ namespace lcd4pico
             writeMode();
             gpio_put(RSPIN, 0);
 
-            uint8_t data = 0b1000;
+            uint8_t data = DISPLAY_CONTROL;
             if (blinkingCursor)
-                data |= 0b1;
+                data |= BLINKING_CURSOR;
             if (cursorOn)
-                data |= 0b10;
+                data |= CURSOR_ON;
             if (displayOn)
-                data |= 0b100;
+                data |= DISPLAY_ON;
 
             writeData(data);
         }
@@ -132,7 +181,7 @@ namespace lcd4pico
             writeMode();
             gpio_put(RSPIN, 0);
 
-            writeData(0b1000000 | addr);
+            writeData(SET_CGRAM | addr);
         }
 
         void setDDRAM(uint8_t addr)
@@ -140,45 +189,33 @@ namespace lcd4pico
             writeMode();
             gpio_put(RSPIN, 0);
 
-            writeData(0b10000000 | addr);
-        }
-
-        void writeData(uint8_t data)
-        {
-            auto binData = intToBinString(data);
-            for (uint8_t pin = 0; pin < data_length; pin++)
-            {
-                gpio_put(DATAPINS[pin], binData[pin] - '0');
-            }
-            clockEnable();
-            if (data_length != 8 && isFunctionSet)
-            {
-                for (uint8_t pin = 0, i = data_length; pin < data_length; pin++, i++)
-                {
-                    gpio_put(DATAPINS[pin], binData[i] - '0');
-                }
-                clockEnable();
-            }
+            writeData(SET_DDRAM | addr);
         }
 
         void readMode()
         {
+            if (!isInWriteMode)
+                return;
             for (uint8_t pin : DATAPINS)
             {
                 gpio_init(pin);
                 gpio_set_dir(pin, GPIO_IN);
             }
             gpio_put(RWPIN, 1);
+            isInWriteMode = false;
         }
 
         void writeMode()
         {
+            if (isInWriteMode)
+                return; // don't switch to write mode if it's alreay in it
             for (uint8_t pin : DATAPINS)
             {
                 gpio_init(pin);
                 gpio_set_dir(pin, GPIO_OUT);
             }
             gpio_put(RWPIN, 0);
+            isInWriteMode = true;
         }
 
         void clockEnable(uint64_t pulseWidth_ns)
@@ -203,33 +240,90 @@ namespace lcd4pico
         // checks whether the LCD is busy processing instructions
         bool isBusy()
         {
-            readMode();
+            if (writeOnlyMode)
+                return false;
             gpio_put(RSPIN, 0);
+            readMode();
 
             setEnable(1);
-            bool bf = gpio_get(DATAPINS[7]);
+            sleep_us(10);
+            bool bf = gpio_get(DATAPINS[0]);
             setEnable(0);
+
             return bf;
         }
 
         // checks whether the LCD is busy processing instructions
         bool isBusy(uint8_t &addrCounter)
         {
-            readMode();
+            if (writeOnlyMode)
+                return false;
             gpio_put(RSPIN, 0);
 
-            setEnable(1);
-            bool bf = gpio_get(DATAPINS[7]);
+            uint8_t data;
+            readData(data);
+            bool bf = data & 0b10000000;
+            return bf;
+        }
 
+        void readData(uint8_t &data)
+        {
+            if (writeOnlyMode)
+                return;
+            readMode();
+
+            setEnable(1);
+            sleep_us(10);
             std::string ac;
-            for (uint8_t pin = 6; pin > 0; pin--)
+            for (uint8_t pin = 0; pin < data_length; pin++)
             {
                 ac.append(gpio_get(DATAPINS[pin]) ? "1" : "0");
             }
-            addrCounter = std::bitset<8>(ac).to_ulong();
+            data = std::bitset<8>(ac).to_ulong();
 
             setEnable(0);
-            return bf;
+        }
+
+        void writeData(uint8_t data)
+        {
+            if (!writeOnlyMode)
+                waitWhileBusy(); // use busy flag checking if it's available as it's more safer
+
+            writeMode();
+
+            auto binData = intToBinString(data);
+            for (uint8_t pin = 0; pin < data_length; pin++)
+            {
+                gpio_put(DATAPINS[pin], binData[pin] - '0');
+            }
+            clockEnable();
+
+            if (data_length != 8 && !firstInstruction)
+            {
+                if (!writeOnlyMode)
+                    waitWhileBusy();
+
+                writeMode();
+                for (uint8_t pin = 0, i = data_length; pin < data_length; pin++, i++)
+                {
+                    gpio_put(DATAPINS[pin], binData[i] - '0');
+                }
+                clockEnable();
+            }
+        }
+
+    private:
+        void waitWhileBusy()
+        {
+            if (isFunctionSet)
+            {
+                bool state = gpio_get(RSPIN); // save the current state of the RS pin
+                while (isBusy())
+                {
+                    sleep_us(5);
+                }
+                gpio_put(RSPIN, state); // reset the state
+            }
         }
     };
 }

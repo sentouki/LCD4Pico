@@ -28,7 +28,7 @@ namespace lcd4pico
             gpio_put(this->RSPIN, 0);
 
             this->writeData(0x2);
-
+            
             sleep_ms(2);
         }
 
