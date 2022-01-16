@@ -5,7 +5,7 @@
 
 namespace lcd4pico
 {
-    template <uint8_t data_length>
+    template <const uint8_t data_length>
     class LCD4Pico : private LCD4PicoBase<data_length>
     {
     public:
@@ -19,7 +19,8 @@ namespace lcd4pico
 
             this->writeData(0x1);
 
-            sleep_ms(2);
+            if (this->writeOnlyMode)
+                sleep_ms(2);
         }
 
         void returnHome()
@@ -29,7 +30,8 @@ namespace lcd4pico
 
             this->writeData(0x2);
             
-            sleep_ms(2);
+            if (this->writeOnlyMode)
+                sleep_ms(2);
         }
 
         // shifts the display "left" or "right"
@@ -38,8 +40,6 @@ namespace lcd4pico
             this->writeMode();
             gpio_put(this->RSPIN, 0);
 
-            if (direction != "left" && direction != "right")
-                return;
             this->shiftDisplayOrCursor(direction, true);
         }
         // moves the cursor "left" or "right"
@@ -48,8 +48,6 @@ namespace lcd4pico
             this->writeMode();
             gpio_put(this->RSPIN, 0);
 
-            if (direction != "left" && direction != "right")
-                return;
             this->shiftDisplayOrCursor(direction, false);
         }
 

@@ -6,7 +6,7 @@
 #define WRITE_ONLY UINT8_MAX
 
 #define FUNCTION_SET 0b100000
-#define DL_8BIT 0b10000
+#define _8BIT_MODE 0b10000
 #define TWO_DISPLAY_LINES 0b1000
 #define FONT_5x10DOTS 0b100
 
@@ -27,10 +27,11 @@
 #define SET_DDRAM 0b10000000
 
 #define BUSY_FLAG 0b10000000
+#define ADDRESS_COUNTER 0b01111111
 
 namespace lcd4pico
 {
-    template <uint8_t data_length>
+    template <const uint8_t data_length>
     class LCD4PicoBase
     {
     protected:
@@ -90,6 +91,7 @@ namespace lcd4pico
             gpio_set_dir(RSPIN, GPIO_OUT);
             gpio_put(ENABLEPIN, 0);
             gpio_put(RSPIN, 0);
+
             setFunctionMode(numOfdisplayLines, largeFont);
             displayControl(blinkingCursor, cursorOn, displayOn);
             setEntryMode(accompanyDisplayShift, incrementCursor);
@@ -105,7 +107,7 @@ namespace lcd4pico
 
             uint8_t data = FUNCTION_SET;
             if (data_length == 8)
-                data |= DL_8BIT;
+                data |= _8BIT_MODE;
             else
             {
                 writeData(data); // set operation mode to 4bit
@@ -218,17 +220,17 @@ namespace lcd4pico
             isInWriteMode = true;
         }
 
-        void clockEnable(uint64_t pulseWidth_ns)
+        void pulseEnable(uint64_t pulseWidth_us)
         {
             gpio_put(ENABLEPIN, 1);
-            sleep_us(pulseWidth_ns);
+            sleep_us(pulseWidth_us);
             gpio_put(ENABLEPIN, 0);
         }
 
-        void clockEnable()
+        void pulseEnable()
         {
             gpio_put(ENABLEPIN, 1);
-            sleep_us(50);
+            sleep_us(1);
             gpio_put(ENABLEPIN, 0);
         }
 
@@ -245,10 +247,9 @@ namespace lcd4pico
             gpio_put(RSPIN, 0);
             readMode();
 
-            setEnable(1);
-            sleep_us(10);
-            bool bf = gpio_get(DATAPINS[0]);
-            setEnable(0);
+            uint8_t data;
+            readData(data);
+            bool bf = data & BUSY_FLAG; // extract the busy-flag
 
             return bf;
         }
@@ -262,7 +263,9 @@ namespace lcd4pico
 
             uint8_t data;
             readData(data);
-            bool bf = data & 0b10000000;
+            bool bf = data & BUSY_FLAG; // extract the busy-flag
+            addrCounter = data & ADDRESS_COUNTER;   // extract address counter
+
             return bf;
         }
 
@@ -273,20 +276,29 @@ namespace lcd4pico
             readMode();
 
             setEnable(1);
-            sleep_us(10);
+            sleep_us(1);
             std::string ac;
             for (uint8_t pin = 0; pin < data_length; pin++)
             {
                 ac.append(gpio_get(DATAPINS[pin]) ? "1" : "0");
             }
-            data = std::bitset<8>(ac).to_ulong();
-
             setEnable(0);
+            if (data_length == 4) {
+                sleep_us(1);
+                setEnable(1);
+                sleep_us(1);
+                for (uint8_t pin = 0; pin < data_length; pin++) {
+                    ac.append(gpio_get(DATAPINS[pin]) ? "1" : "0");
+                }
+                setEnable(0);
+            }
+
+            data = std::bitset<8>(ac).to_ulong();
         }
 
         void writeData(uint8_t data)
         {
-            if (!writeOnlyMode)
+            if (!writeOnlyMode && !firstInstruction)
                 waitWhileBusy(); // use busy flag checking if it's available as it's more safer
 
             writeMode();
@@ -296,20 +308,18 @@ namespace lcd4pico
             {
                 gpio_put(DATAPINS[pin], binData[pin] - '0');
             }
-            clockEnable();
-
-            if (data_length != 8 && !firstInstruction)
+            pulseEnable();
+            sleep_us(1);
+            
+            if (data_length == 4 && !firstInstruction)
             {
-                if (!writeOnlyMode)
-                    waitWhileBusy();
-
-                writeMode();
                 for (uint8_t pin = 0, i = data_length; pin < data_length; pin++, i++)
                 {
                     gpio_put(DATAPINS[pin], binData[i] - '0');
                 }
-                clockEnable();
+                pulseEnable();
             }
+            if (writeOnlyMode) sleep_us(50);
         }
 
     private:
@@ -318,9 +328,8 @@ namespace lcd4pico
             if (isFunctionSet)
             {
                 bool state = gpio_get(RSPIN); // save the current state of the RS pin
-                while (isBusy())
-                {
-                    sleep_us(5);
+                while (isBusy()) {
+                    sleep_us(1);
                 }
                 gpio_put(RSPIN, state); // reset the state
             }
