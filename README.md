@@ -80,3 +80,4 @@ int main()
  - predefined custom characters
  - possibility to define own custom characters
  - animations
+ - I²C
