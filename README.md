@@ -37,32 +37,32 @@ Possible arguments for the setup are:
 ```c++
 #include "pico/stdlib.h"
 #include "LCD4Pico/LCD4Pico.hpp"
-
-#define BIT_MODE 4
+#include "LCD4Pico/Enums.hpp"
 
 int main()
 {
     stdio_init_all();
 
-    const uint8_t dpins[BIT_MODE] = {7, 6, 5, 4}; // 3, 2, 1, 0};
+    const uint8_t dpins[lcd4pico::Bit_Mode::_4BIT] = {4, 5, 6, 7};
     const uint8_t enable_pin = 16;
     const uint8_t rs_pin = 18;
     const uint8_t rw_pin = 17;
 
-    lcd4pico::LCD4Pico<BIT_MODE> lcd(enable_pin, rs_pin, rw_pin, dpins);
-    // lcd4pico::LCD4Pico<BIT_MODE> lcd(enable_pin, rs_pin, dpins);  for write-only mode
+    lcd4pico::LCD4Pico<lcd4pico::Bit_Mode::_4BIT> lcd(enable_pin, rs_pin, rw_pin, dpins);
+    // lcd4pico::LCD4Pico<lcd4pico::Bit_Mode::_4BIT> lcd(enable_pin, rs_pin, dpins);  for write-only mode
 
     lcd.setup();
 
     lcd.write("Hello,");
     lcd.toSecondLine();
     lcd.write("World!");
+    // or lcd.writeLines("Hello,", "World!");
 
     sleep_ms(1000);
 
     for (uint i = 0; i < 100; i++)
     {
-        lcd.shiftDisplay("right");
+        lcd.shiftDisplay(lcd4pico::Direction::Right);
         sleep_ms(120);
     }
 

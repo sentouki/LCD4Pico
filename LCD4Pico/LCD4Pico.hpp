@@ -5,12 +5,12 @@
 
 namespace lcd4pico
 {
-    template <const uint8_t data_length>
-    class LCD4Pico : private LCD4PicoBase<data_length>
+    template <const Bit_Mode bit_mode>
+    class LCD4Pico : private LCD4PicoBase<bit_mode>
     {
     public:
-        using LCD4PicoBase<data_length>::LCD4PicoBase;
-        using LCD4PicoBase<data_length>::setup;
+        using LCD4PicoBase<bit_mode>::LCD4PicoBase;
+        using LCD4PicoBase<bit_mode>::setup;
 
         void clearDisplay()
         {
@@ -29,21 +29,21 @@ namespace lcd4pico
             gpio_put(this->RSPIN, 0);
 
             this->writeData(0x2);
-            
+
             if (this->writeOnlyMode)
                 sleep_ms(2);
         }
 
-        // shifts the display "left" or "right"
-        void shiftDisplay(std::string direction)
+        // shifts the display Left or Right
+        void shiftDisplay(Direction direction)
         {
             this->writeMode();
             gpio_put(this->RSPIN, 0);
 
             this->shiftDisplayOrCursor(direction, true);
         }
-        // moves the cursor "left" or "right"
-        void moveCursor(std::string direction)
+        // moves the cursor Left or Right
+        void moveCursor(Direction direction)
         {
             this->writeMode();
             gpio_put(this->RSPIN, 0);

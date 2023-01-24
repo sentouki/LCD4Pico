@@ -1,7 +1,6 @@
 #pragma once
 #include "pico/stdlib.h"
-#include <string>
-#include <bitset>
+#include "Enums.hpp"
 
 #define WRITE_ONLY UINT8_MAX
 
@@ -31,7 +30,7 @@
 
 namespace lcd4pico
 {
-    template <const uint8_t data_length>
+    template <const Bit_Mode bit_mode>
     class LCD4PicoBase
     {
     protected:
@@ -43,31 +42,31 @@ namespace lcd4pico
         const uint8_t ENABLEPIN;
         const uint8_t RSPIN;
         const uint8_t RWPIN;
-        const uint8_t (&DATAPINS)[data_length];
+        const uint8_t (&DATAPINS)[bit_mode];
 
-        // data pins order: D7,D6,D5,D4 (,D3,D2,D1,D0)
+        // data pins order: (D0,D1,D2,D3,) D4,D5,D6,D7
         LCD4PicoBase(uint8_t Enable_Pin,
                      uint8_t RS_Pin,
                      uint8_t RW_Pin,
-                     const uint8_t (&Data_Pins)[data_length]) :
+                     const uint8_t (&Data_Pins)[bit_mode]) :
 
-                                                                ENABLEPIN(Enable_Pin),
-                                                                RSPIN(RS_Pin),
-                                                                RWPIN(RW_Pin),
-                                                                DATAPINS(Data_Pins)
+                                                             ENABLEPIN(Enable_Pin),
+                                                             RSPIN(RS_Pin),
+                                                             RWPIN(RW_Pin),
+                                                             DATAPINS(Data_Pins)
         {
         }
 
         // ctor with the RW pin deactivated
-        // data pins order: D7,D6,D5,D4 (,D3,D2,D1,D0)
+        // data pins order: (D0,D1,D2,D3,) D4,D5,D6,D7
         LCD4PicoBase(uint8_t Enable_Pin,
                      uint8_t RS_Pin,
-                     const uint8_t (&Data_Pins)[data_length]) :
+                     const uint8_t (&Data_Pins)[bit_mode]) :
 
-                                                                ENABLEPIN(Enable_Pin),
-                                                                RSPIN(RS_Pin),
-                                                                RWPIN(WRITE_ONLY),
-                                                                DATAPINS(Data_Pins)
+                                                             ENABLEPIN(Enable_Pin),
+                                                             RSPIN(RS_Pin),
+                                                             RWPIN(WRITE_ONLY),
+                                                             DATAPINS(Data_Pins)
         {
         }
 
@@ -106,7 +105,7 @@ namespace lcd4pico
             gpio_put(RSPIN, 0);
 
             uint8_t data = FUNCTION_SET;
-            if (data_length == 8)
+            if (bit_mode == _8BIT)
                 data |= _8BIT_MODE;
             else
             {
@@ -126,15 +125,15 @@ namespace lcd4pico
             isFunctionSet = true;
         }
 
-        void shiftDisplayOrCursor(std::string direction, bool display)
+        void shiftDisplayOrCursor(Direction direction, bool display)
         {
-            if (direction != "left" && direction != "right")
+            if (direction != Direction::Left && direction != Direction::Right)
                 return;
 
             writeMode();
             gpio_put(RSPIN, 0);
 
-            uint8_t data = direction == "right" ? RIGHT_SHIFT : LEFT_SHIFT;
+            uint8_t data = direction == Direction::Right ? RIGHT_SHIFT : LEFT_SHIFT;
             if (display)
                 data |= DISPLAY_SHIFT;
 
@@ -169,13 +168,6 @@ namespace lcd4pico
                 data |= DISPLAY_ON;
 
             writeData(data);
-        }
-
-        // converts uint8 to its binary representation and returns it as string
-        std::string intToBinString(uint8_t value)
-        {
-            std::string binary = std::bitset<8>(value).to_string();
-            return binary;
         }
 
         void setCGRAM(uint8_t addr)
@@ -247,8 +239,7 @@ namespace lcd4pico
             gpio_put(RSPIN, 0);
             readMode();
 
-            uint8_t data;
-            readData(data);
+            uint8_t data = readData();
             bool bf = data & BUSY_FLAG; // extract the busy-flag
 
             return bf;
@@ -261,39 +252,47 @@ namespace lcd4pico
                 return false;
             gpio_put(RSPIN, 0);
 
-            uint8_t data;
-            readData(data);
-            bool bf = data & BUSY_FLAG; // extract the busy-flag
-            addrCounter = data & ADDRESS_COUNTER;   // extract address counter
+            uint8_t data = readData();
+            bool bf = data & BUSY_FLAG;           // extract the busy-flag
+            addrCounter = data & ADDRESS_COUNTER; // extract address counter
 
             return bf;
         }
 
-        void readData(uint8_t &data)
+        uint8_t readData()
         {
             if (writeOnlyMode)
-                return;
+                return 0;
             readMode();
 
             setEnable(1);
             sleep_us(1);
-            std::string ac;
-            for (uint8_t pin = 0; pin < data_length; pin++)
+
+            uint8_t data = 0;
+
+            for (uint8_t pin = 0; pin < bit_mode; pin++)
             {
-                ac.append(gpio_get(DATAPINS[pin]) ? "1" : "0");
+                uint8_t bit = gpio_get(DATAPINS[pin]) ? 1 : 0;
+                data |= bit << pin;
             }
+
             setEnable(0);
-            if (data_length == 4) {
+            if (bit_mode == _4BIT)
+            {
                 sleep_us(1);
                 setEnable(1);
                 sleep_us(1);
-                for (uint8_t pin = 0; pin < data_length; pin++) {
-                    ac.append(gpio_get(DATAPINS[pin]) ? "1" : "0");
+
+                data <<= 4;
+                for (uint8_t pin = 0; pin < bit_mode; pin++)
+                {
+                    uint8_t bit = gpio_get(DATAPINS[pin]) ? 1 : 0;
+                    data |= bit << pin;
                 }
+
                 setEnable(0);
             }
-
-            data = std::bitset<8>(ac).to_ulong();
+            return data;
         }
 
         void writeData(uint8_t data)
@@ -303,23 +302,24 @@ namespace lcd4pico
 
             writeMode();
 
-            auto binData = intToBinString(data);
-            for (uint8_t pin = 0; pin < data_length; pin++)
+            for (uint8_t bit = bit_mode == _8BIT ? 1 : 16, pin = 0; pin < bit_mode; bit <<= 1, pin++)
             {
-                gpio_put(DATAPINS[pin], binData[pin] - '0');
+                gpio_put(DATAPINS[pin], data & bit);
             }
+
             pulseEnable();
-            sleep_us(1);
-            
-            if (data_length == 4 && !firstInstruction)
+
+            if (bit_mode == _4BIT && !firstInstruction)
             {
-                for (uint8_t pin = 0, i = data_length; pin < data_length; pin++, i++)
+                for (uint8_t bit = 1, pin = 0; pin < bit_mode; bit <<= 1, pin++)
                 {
-                    gpio_put(DATAPINS[pin], binData[i] - '0');
+                    gpio_put(DATAPINS[pin], data & bit);
                 }
                 pulseEnable();
             }
-            if (writeOnlyMode) sleep_us(50);
+
+            if (writeOnlyMode)
+                sleep_us(50);
         }
 
     private:
@@ -328,7 +328,8 @@ namespace lcd4pico
             if (isFunctionSet)
             {
                 bool state = gpio_get(RSPIN); // save the current state of the RS pin
-                while (isBusy()) {
+                while (isBusy())
+                {
                     sleep_us(1);
                 }
                 gpio_put(RSPIN, state); // reset the state
