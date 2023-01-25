@@ -43,7 +43,7 @@ int main()
 {
     stdio_init_all();
 
-    const uint8_t dpins[lcd4pico::Bit_Mode::_4BIT] = {4, 5, 6, 7};
+    const uint8_t dpins[] = {4, 5, 6, 7};
     const uint8_t enable_pin = 16;
     const uint8_t rs_pin = 18;
     const uint8_t rw_pin = 17;
