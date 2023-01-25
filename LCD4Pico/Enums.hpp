@@ -10,7 +10,7 @@ namespace lcd4pico
         _8BIT = 8
     };
 
-    enum Direction
+    enum Direction : const uint8_t
     {
         Left,
         Right

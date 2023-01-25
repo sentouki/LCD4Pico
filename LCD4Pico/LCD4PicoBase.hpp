@@ -37,7 +37,6 @@ namespace lcd4pico
         bool isFunctionSet = false;
         bool isInWriteMode = false;
         bool writeOnlyMode = true;
-        bool firstInstruction = true; // flag indicating whether the instruction currently being executed is the first instruction; important for 4bit mode
     public:
         const uint8_t ENABLEPIN;
         const uint8_t RSPIN;
@@ -109,9 +108,8 @@ namespace lcd4pico
                 data |= _8BIT_MODE;
             else
             {
-                writeData(data); // set operation mode to 4bit
+                writeUpperNibble(data); // set operation mode to 4bit
             }
-            firstInstruction = false;
 
             if (numDisplayLines == 2)
             {
@@ -297,8 +295,8 @@ namespace lcd4pico
 
         void writeData(uint8_t data)
         {
-            if (!writeOnlyMode && !firstInstruction)
-                waitWhileBusy(); // use busy flag checking if it's available as it's more safer
+            if (!writeOnlyMode) waitWhileBusy(); // use busy flag checking if it's available as it's more safer
+            else sleep_us(50);
 
             writeMode();
 
@@ -309,7 +307,7 @@ namespace lcd4pico
 
             pulseEnable();
 
-            if (bit_mode == _4BIT && !firstInstruction)
+            if (bit_mode == _4BIT)
             {
                 for (uint8_t bit = 1, pin = 0; pin < bit_mode; bit <<= 1, pin++)
                 {
@@ -317,9 +315,6 @@ namespace lcd4pico
                 }
                 pulseEnable();
             }
-
-            if (writeOnlyMode)
-                sleep_us(50);
         }
 
     private:
@@ -334,6 +329,23 @@ namespace lcd4pico
                 }
                 gpio_put(RSPIN, state); // reset the state
             }
+            else sleep_us(50);
+        }
+
+        // For 4bit mode only
+        void writeUpperNibble(uint8_t data) 
+        {
+            if (!writeOnlyMode) waitWhileBusy();
+            else sleep_us(50);
+
+            writeMode();
+
+            for (uint8_t bit = 16, pin = 0; pin < 4; bit <<= 1, pin++)
+            {
+                gpio_put(DATAPINS[pin], data & bit);
+            }
+
+            pulseEnable();
         }
     };
 }
