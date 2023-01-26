@@ -4,6 +4,11 @@
 
 #define WRITE_ONLY UINT8_MAX
 
+#ifndef INSTRUCTION_WAITING_TIME
+#define INSTRUCTION_WAITING_TIME 50
+#endif
+
+
 #define FUNCTION_SET 0b100000
 #define _8BIT_MODE 0b10000
 #define TWO_DISPLAY_LINES 0b1000
@@ -296,7 +301,7 @@ namespace lcd4pico
         void writeData(uint8_t data)
         {
             if (!writeOnlyMode) waitWhileBusy(); // use busy flag checking if it's available as it's more safer
-            else sleep_us(50);
+            else sleep_us(INSTRUCTION_WAITING_TIME);
 
             writeMode();
 
@@ -329,14 +334,14 @@ namespace lcd4pico
                 }
                 gpio_put(RSPIN, state); // reset the state
             }
-            else sleep_us(50);
+            else sleep_us(INSTRUCTION_WAITING_TIME);
         }
 
         // For 4bit mode only
         void writeUpperNibble(uint8_t data) 
         {
             if (!writeOnlyMode) waitWhileBusy();
-            else sleep_us(50);
+            else sleep_us(INSTRUCTION_WAITING_TIME);
 
             writeMode();
 

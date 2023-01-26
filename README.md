@@ -43,7 +43,7 @@ int main()
 {
     stdio_init_all();
 
-    const uint8_t dpins[] = {4, 5, 6, 7};
+    const uint8_t dpins[] = {4, 5, 6, 7};  // D4,D5,D6,D7 
     const uint8_t enable_pin = 16;
     const uint8_t rs_pin = 18;
     const uint8_t rw_pin = 17;
@@ -75,7 +75,17 @@ int main()
 }
 ```
 
- ### Features in the future
+### Troubleshooting
+If you experience any issues, try setting the `INSTRUCTION_WAITING_TIME` macro to 100 or higher:  
+```c++
+#define INSTRUCTION_WAITING_TIME 100
+
+#include "pico/stdlib.h"
+#include "LCD4Pico/LCD4Pico.hpp"
+#include "LCD4Pico/Enums.hpp"
+```
+
+### Features in the future
 
  - predefined custom characters
  - possibility to define own custom characters
