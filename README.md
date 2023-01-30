@@ -76,6 +76,12 @@ int main()
 ```
 
 ### Custom Characters
+<h1 align="center">
+  <img style="margin:15px 15px -15px 30px;" width="350"
+    src="https://user-images.githubusercontent.com/50547116/215369344-a63c3490-db18-47a1-921c-fa32e4e59424.png"/>
+</h1>  
+<br>
+
 Use `createCustomCharacter(uint8_t index, const uint8_t (&character)[8])` to define your own custom character. Then use `writeCustomCharacter(uint8_t index)` to write the custom character to the display. I recommend [this tool](https://omerk.github.io/lcdchargen/) to create your own characters as it allows you to preview the result.  
 
 You can also use predefined symbols from the `lcd4pico::symbols` namespace.
@@ -87,7 +93,7 @@ You can also use predefined symbols from the `lcd4pico::symbols` namespace.
     lcd.writeCustomCharacter(0);  // writes bell symbol to the display
     lcd.writeCustomCharacter(1);  // writes check mark symbol to the display
     lcd.writeCustomCharacter(2);  // writes a smiley to the display
-```
+```  
 
 ### Troubleshooting
 If you experience any issues, try setting the `INSTRUCTION_WAITING_TIME` macro to 100 or higher:  
