@@ -52,7 +52,7 @@ namespace lcd4pico
         const uint8_t (&DATAPINS)[bit_mode];
 
         /**
-         * @brief Construct a new LCD4PicoBase object.
+         * @brief Construct a new object.
          * 
          * @param Data_Pins Data pins order: (D0,D1,D2,D3,) D4,D5,D6,D7 .
          */
@@ -131,8 +131,8 @@ namespace lcd4pico
         /**
          * @brief Checks whether the LCD is busy processing instructions.
          * 
-         * @return true The display is busy processing current instruction and cannot accept any new instruction now.
-         * @return false The display accepts new instructions
+         * @return true The display is busy processing current instructions and is now unable to accept new instructions.
+         * @return false The display is ready to accept new instructions.
          */
         bool isBusy();
 
@@ -140,8 +140,8 @@ namespace lcd4pico
          * @brief Checks whether the LCD is busy processing instructions.
          * 
          * @param addrCounter Address Counter
-         * @return true The display is busy processing current instruction and cannot accept any new instruction now.
-         * @return false The display accepts new instructions
+         * @return true The display is busy processing current instructions and is now unable to accept new instructions.
+         * @return false The display is ready to accept new instructions.
          */
         bool isBusy(uint8_t &addrCounter);
 
