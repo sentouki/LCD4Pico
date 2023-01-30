@@ -75,6 +75,20 @@ int main()
 }
 ```
 
+### Custom Characters
+Use `createCustomCharacter(uint8_t index, const uint8_t (&character)[8])` to define your own custom character. Then use `writeCustomCharacter(uint8_t index)` to write the custom character to the display. I recommend [this tool](https://omerk.github.io/lcdchargen/) to create your own characters as it allows you to preview the result.  
+
+You can also use predefined symbols from the `lcd4pico::symbols` namespace.
+```c++
+    lcd.createCustomCharacter(0, lcd4pico::symbols::bell);
+    lcd.createCustomCharacter(1, lcd4pico::symbols::checkMark);
+    lcd.createCustomCharacter(2, lcd4pico::symbols::smile);
+
+    lcd.writeCustomCharacter(0);  // writes bell symbol to the display
+    lcd.writeCustomCharacter(1);  // writes check mark symbol to the display
+    lcd.writeCustomCharacter(2);  // writes a smiley to the display
+```
+
 ### Troubleshooting
 If you experience any issues, try setting the `INSTRUCTION_WAITING_TIME` macro to 100 or higher:  
 ```c++
@@ -84,10 +98,3 @@ If you experience any issues, try setting the `INSTRUCTION_WAITING_TIME` macro t
 #include "LCD4Pico/LCD4Pico.hpp"
 #include "LCD4Pico/Enums.hpp"
 ```
-
-### Features in the future
-
- - predefined custom characters
- - possibility to define own custom characters
- - animations
- - I²C

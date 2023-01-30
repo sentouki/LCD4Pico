@@ -8,6 +8,8 @@
 #define INSTRUCTION_WAITING_TIME 50
 #endif
 
+#define INSTRUCTION_REGISTER 0
+#define DATA_REGISTER 1
 
 #define FUNCTION_SET 0b100000
 #define _8BIT_MODE 0b10000
@@ -92,8 +94,8 @@ namespace lcd4pico
             }
             gpio_set_dir(ENABLEPIN, GPIO_OUT);
             gpio_set_dir(RSPIN, GPIO_OUT);
-            gpio_put(ENABLEPIN, 0);
-            gpio_put(RSPIN, 0);
+            setEnable(0);
+            setRegister(INSTRUCTION_REGISTER);
 
             setFunctionMode(numOfdisplayLines, largeFont);
             displayControl(blinkingCursor, cursorOn, displayOn);
@@ -106,7 +108,7 @@ namespace lcd4pico
                 return;
 
             writeMode();
-            gpio_put(RSPIN, 0);
+            setRegister(INSTRUCTION_REGISTER);
 
             uint8_t data = FUNCTION_SET;
             if (bit_mode == _8BIT)
@@ -134,7 +136,7 @@ namespace lcd4pico
                 return;
 
             writeMode();
-            gpio_put(RSPIN, 0);
+            setRegister(INSTRUCTION_REGISTER);
 
             uint8_t data = direction == Direction::Right ? RIGHT_SHIFT : LEFT_SHIFT;
             if (display)
@@ -146,7 +148,7 @@ namespace lcd4pico
         void setEntryMode(bool accompanyDisplayShift, bool incrementCursor)
         {
             writeMode();
-            gpio_put(RSPIN, 0);
+            setRegister(INSTRUCTION_REGISTER);
 
             uint8_t data = ENTRY_MODE_SET;
             if (accompanyDisplayShift)
@@ -157,10 +159,10 @@ namespace lcd4pico
             writeData(data);
         }
 
-        void displayControl(bool blinkingCursor = true, bool cursorOn = true, bool displayOn = true)
+        void displayControl(bool blinkingCursor, bool cursorOn, bool displayOn)
         {
             writeMode();
-            gpio_put(RSPIN, 0);
+            setRegister(INSTRUCTION_REGISTER);
 
             uint8_t data = DISPLAY_CONTROL;
             if (blinkingCursor)
@@ -176,7 +178,7 @@ namespace lcd4pico
         void setCGRAM(uint8_t addr)
         {
             writeMode();
-            gpio_put(RSPIN, 0);
+            setRegister(INSTRUCTION_REGISTER);
 
             writeData(SET_CGRAM | addr);
         }
@@ -184,7 +186,7 @@ namespace lcd4pico
         void setDDRAM(uint8_t addr)
         {
             writeMode();
-            gpio_put(RSPIN, 0);
+            setRegister(INSTRUCTION_REGISTER);
 
             writeData(SET_DDRAM | addr);
         }
@@ -217,16 +219,16 @@ namespace lcd4pico
 
         void pulseEnable(uint64_t pulseWidth_us)
         {
-            gpio_put(ENABLEPIN, 1);
+            setEnable(1);
             sleep_us(pulseWidth_us);
-            gpio_put(ENABLEPIN, 0);
+            setEnable(0);
         }
 
         void pulseEnable()
         {
-            gpio_put(ENABLEPIN, 1);
+            setEnable(1);
             sleep_us(1);
-            gpio_put(ENABLEPIN, 0);
+            setEnable(0);
         }
 
         void setEnable(bool value)
@@ -234,12 +236,17 @@ namespace lcd4pico
             gpio_put(ENABLEPIN, value);
         }
 
+        void setRegister(bool reg) 
+        {
+            gpio_put(RSPIN, reg);
+        }
+
         // checks whether the LCD is busy processing instructions
         bool isBusy()
         {
             if (writeOnlyMode)
                 return false;
-            gpio_put(RSPIN, 0);
+            setRegister(INSTRUCTION_REGISTER);
             readMode();
 
             uint8_t data = readData();
@@ -253,7 +260,7 @@ namespace lcd4pico
         {
             if (writeOnlyMode)
                 return false;
-            gpio_put(RSPIN, 0);
+            setRegister(INSTRUCTION_REGISTER);
 
             uint8_t data = readData();
             bool bf = data & BUSY_FLAG;           // extract the busy-flag
